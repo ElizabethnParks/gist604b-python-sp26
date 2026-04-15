@@ -131,27 +131,83 @@ def filter_environmental_data(df, min_temp=15, max_temp=30, quality="good"):
           - Data quality: good
     """
     
-    # TODO: Print a header
-    # TODO: Use print("=" * 50) and print("FILTERING ENVIRONMENTAL DATA")
+    print("=" * 50)
+    print("FILTERING ENVIRONMENTAL DATA")
+    print("=" * 50)
     
-    # TODO: Print the original DataFrame shape
-    # TODO: Use len(df) to get the number of rows
+    # Input validation
+    if df is None or df.empty:
+        print("❌ ERROR: Empty or None DataFrame provided")
+        return pd.DataFrame()
     
-    # TODO: Filter by temperature range using boolean indexing
-    # TODO: Create a mask: (df['temperature_c'] >= min_temp) & (df['temperature_c'] <= max_temp)
-    # TODO: Apply the mask: filtered_df = df[mask]
+    # Check for required columns
+    required_columns = ['temperature_c', 'data_quality']
+    missing_columns = [col for col in required_columns if col not in df.columns]
     
-    # TODO: Filter by data quality
-    # TODO: Add another condition: filtered_df = filtered_df[filtered_df['data_quality'] == quality]
+    if missing_columns:
+        print(f"❌ ERROR: Missing required columns: {missing_columns}")
+        print(f"📋 Available columns: {list(df.columns)}")
+        return pd.DataFrame()
     
-    # TODO: Calculate and print filtering statistics
-    # TODO: - How many rows remain after filtering
-    # TODO: - What percentage of data was retained
-    # TODO: - Show the filter criteria used
+    original_count = len(df)
+    print(f"📊 Starting with {original_count} rows of environmental data")
     
-    # TODO: Return the filtered DataFrame
+    # Show filtering criteria
+    print(f"\n🎯 FILTERING CRITERIA:")
+    print(f"   Temperature range: {min_temp}°C to {max_temp}°C")
+    print(f"   Data quality: '{quality}'")
     
-    pass  # Remove this line when you implement the function
+    # Check if quality level exists
+    available_qualities = df['data_quality'].unique()
+    if quality not in available_qualities:
+        print(f"\n⚠️  WARNING: Quality level '{quality}' not found in data")
+        print(f"📋 Available quality levels: {list(available_qualities)}")
+        print("🔄 Returning original data without quality filtering...")
+        quality_filter = pd.Series([True] * len(df), index=df.index)  # No filtering
+    else:
+        quality_filter = df['data_quality'] == quality
+    
+    # Apply all filters
+    print(f"\n🔍 APPLYING FILTERS...")
+    
+    # Temperature range filter
+    temp_filter = (df['temperature_c'] >= min_temp) & (df['temperature_c'] <= max_temp)
+    temp_filtered_count = temp_filter.sum()
+    temp_removed = original_count - temp_filtered_count
+    print(f"   🌡️  Temperature filter: kept {temp_filtered_count}, removed {temp_removed} rows")
+    
+    # Quality filter
+    quality_filtered_count = quality_filter.sum()
+    quality_removed = original_count - quality_filtered_count
+    print(f"   🏷️  Quality filter: kept {quality_filtered_count}, removed {quality_removed} rows")
+    
+    # Combined filter
+    combined_filter = temp_filter & quality_filter
+    filtered_df = df[combined_filter].copy()
+    
+    final_count = len(filtered_df)
+    total_removed = original_count - final_count
+    removal_pct = (total_removed / original_count) * 100 if original_count > 0 else 0
+    
+    print(f"\n📈 FILTERING RESULTS:")
+    print(f"   Original dataset: {original_count} rows")
+    print(f"   After filtering: {final_count} rows kept")
+    print(f"   Total removed: {total_removed} rows ({removal_pct:.1f}%)")
+    
+    # Show statistics of filtered data
+    if not filtered_df.empty:
+        print(f"\n📊 FILTERED DATA SUMMARY:")
+        print(f"   Temperature range: {filtered_df['temperature_c'].min():.1f}°C to {filtered_df['temperature_c'].max():.1f}°C")
+        print(f"   Average temperature: {filtered_df['temperature_c'].mean():.1f}°C")
+        print(f"   Quality distribution: {dict(filtered_df['data_quality'].value_counts())}")
+    else:
+        print(f"\n⚠️  WARNING: No data remains after filtering!")
+        print(f"   Consider relaxing your filtering criteria.")
+    
+    print(f"\n✅ Filtering complete! Ready for analysis.")
+    
+    return filtered_df
+    
 
 
 # =============================================================================
@@ -184,35 +240,64 @@ def calculate_station_statistics(df):
           - Stations with data: 5
           - Average readings per station: 200.0
     """
+    print("=" * 50)
+    print("CALCULATING STATION STATISTICS")
+    print("=" * 50)
     
-    # TODO: Print a header
-    # TODO: Use print("=" * 50) and print("CALCULATING STATION STATISTICS")
+    # Input validation
+    if df is None or len(df) == 0:
+        print("❌ ERROR: DataFrame is empty or None")
+        return pd.DataFrame()
     
-    # TODO: Count unique stations
-    # TODO: Use df['station_id'].nunique()
+    # Check for required columns
+    required_columns = ['station_id', 'temperature_c', 'humidity_percent']
+    missing_columns = [col for col in required_columns if col not in df.columns]
     
-    # TODO: Group by station_id
-    # TODO: Use df.groupby('station_id')
+    if missing_columns:
+        print(f"❌ ERROR: Missing required columns: {missing_columns}")
+        print(f"Available columns: {list(df.columns)}")
+        return pd.DataFrame()
     
-    # TODO: Calculate statistics for each group
-    # TODO: - Count of readings: use .size() or .count()
-    # TODO: - Average temperature: use .mean()
-    # TODO: Create a new DataFrame with these statistics
+    # Print input data summary
+    print(f"Processing {len(df):,} temperature readings...")
     
-    # TODO: Reset the index to make station_id a regular column
-    # TODO: Use .reset_index()
+    # Get unique stations
+    unique_stations = df['station_id'].unique()
+    print(f"Found {len(unique_stations)} weather stations: {list(unique_stations)}")
     
-    # TODO: Rename columns to be clear
-    # TODO: Use .rename(columns={'temperature_c': 'avg_temperature', ...})
+    # Group data by station
+    grouped = df.groupby('station_id')
     
-    # TODO: Print summary statistics
-    # TODO: - Total readings analyzed
-    # TODO: - Number of stations
-    # TODO: - Average readings per station
+    # Calculate statistics
+    avg_temperature = grouped['temperature_c'].mean().round(1)
+    avg_humidity = grouped['humidity_percent'].mean().round(1)
+    reading_count = grouped.size()
     
-    # TODO: Return the statistics DataFrame
+    # Create summary DataFrame
+    summary = pd.DataFrame({
+        'station_id': avg_temperature.index,
+        'avg_temperature': avg_temperature.values,
+        'avg_humidity': avg_humidity.values,
+        'reading_count': reading_count.values
+    })
     
-    pass  # Remove this line when you implement the function
+    # Print summary of results
+    print(f"\nTemperature range across all stations: {summary['avg_temperature'].min():.1f}°C to {summary['avg_temperature'].max():.1f}°C")
+    print(f"Humidity range across all stations: {summary['avg_humidity'].min():.1f}% to {summary['avg_humidity'].max():.1f}%")
+    print(f"Total readings processed: {summary['reading_count'].sum():,}")
+    print(f"Average readings per station: {summary['reading_count'].mean():.0f}")
+    
+    # Find temperature extremes
+    hottest_station = summary.loc[summary['avg_temperature'].idxmax()]
+    coolest_station = summary.loc[summary['avg_temperature'].idxmin()]
+    
+    print(f"\nHottest station: {hottest_station['station_id']} (avg: {hottest_station['avg_temperature']:.1f}°C)")
+    print(f"Coolest station: {coolest_station['station_id']} (avg: {coolest_station['avg_temperature']:.1f}°C)")
+    
+    print("\nStation statistics calculated successfully!")
+    
+    return summary
+    
 
 
 # =============================================================================
